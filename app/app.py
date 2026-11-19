@@ -83,7 +83,7 @@ def build_overview_figure() -> px.Figure:
   pdf_long["geography"] = pd.Categorical(
       pdf_long["geography"], categories=GEO_ORDER, ordered=True
   )
-  pdf_long = pdf_long.sort_values(["indicator", "geography"])
+  pdf_long = pdf_long.sort_values(["indicator", "geography"]).reset_index(drop=True)
 
   fig = px.bar(
       pdf_long,
@@ -113,6 +113,7 @@ def build_overview_figure() -> px.Figure:
   )
   max_pct = float(pdf_long["pct"].max()) if len(pdf_long) else 10.0
   fig.update_layout(
+      autosize=True,
       title={
           "text": "Multi-Area Indicators Ranked by Detroit-to-Michigan Ratio",
           "font": {"size": 18, "color": "#111827"},
@@ -154,11 +155,20 @@ def build_disparity_table() -> html.Table:
             children=[
                 html.Td(r["indicator"], style={"padding": "10px 12px", "fontWeight": "600"}),
                 html.Td(r["year"], style={"padding": "10px 12px", "color": "#6b7280"}),
-                html.Td(f"{r['detroit_pct']:.1f}%", style={"padding": "10px 12px", "color": "#6b2d5c", "fontWeight": "700"}),
+                html.Td(
+                    f"{r['detroit_pct']:.1f}%",
+                    style={"padding": "10px 12px", "color": "#6b2d5c", "fontWeight": "700"},
+                ),
                 html.Td(f"{r['wayne_pct']:.1f}%", style={"padding": "10px 12px"}),
                 html.Td(f"{r['michigan_pct']:.1f}%", style={"padding": "10px 12px"}),
-                html.Td(f"{gap:+.1f} pp" if gap is not None else "—", style={"padding": "10px 12px", "fontWeight": "600"}),
-                html.Td(f"{ratio:.2f}x" if ratio is not None else "—", style={"padding": "10px 12px", "fontWeight": "600"}),
+                html.Td(
+                    f"{gap:+.1f} pp" if gap is not None else "—",
+                    style={"padding": "10px 12px", "fontWeight": "600"},
+                ),
+                html.Td(
+                    f"{ratio:.2f}x" if ratio is not None else "—",
+                    style={"padding": "10px 12px", "fontWeight": "600"},
+                ),
             ],
         )
     )
@@ -178,7 +188,11 @@ def build_disparity_table() -> html.Table:
       children=[
           html.Thead(
               html.Tr(
-                  style={"borderBottom": "2px solid #e5e7eb", "textAlign": "left", "color": "#4b5563"},
+                  style={
+                      "borderBottom": "2px solid #e5e7eb",
+                      "textAlign": "left",
+                      "color": "#4b5563",
+                  },
                   children=[html.Th(h, style={"padding": "8px 12px"}) for h in headers],
               )
           ),
@@ -192,7 +206,10 @@ def build_detroit_only_banner() -> html.Div | None:
     return None
   items = [
       html.Li(
-          f"{r['indicator']} ({r['year']}): {r['detroit_pct']:.1f}% in Detroit — {r['notes'] or 'Detroit-only metric'}",
+          (
+              f"{r['indicator']} ({r['year']}): {r['detroit_pct']:.1f}% in Detroit — "
+              f"{r['notes'] or 'Detroit-only metric'}"
+          ),
           style={"marginBottom": "4px"},
       )
       for r in df_detroit_only.iter_rows(named=True)
@@ -215,7 +232,10 @@ def build_detroit_only_banner() -> html.Div | None:
                   "marginBottom": "6px",
               },
           ),
-          html.Ul(items, style={"margin": "0", "paddingLeft": "18px", "fontSize": "13px", "color": "#374151"}),
+          html.Ul(
+              items,
+              style={"margin": "0", "paddingLeft": "18px", "fontSize": "13px", "color": "#374151"},
+          ),
       ],
   )
 
@@ -305,6 +325,7 @@ app.layout = html.Div(
                                 dcc.Graph(
                                     id="overview-chart",
                                     figure=build_overview_figure(),
+                                    responsive=True,
                                     config={"displayModeBar": False},
                                 )
                             ],
@@ -369,6 +390,7 @@ app.layout = html.Div(
                             children=[
                                 dcc.Graph(
                                     id="comparison-chart",
+                                    responsive=True,
                                     config={"displayModeBar": False},
                                 )
                             ],
@@ -398,12 +420,23 @@ def toggle_tabs(active_tab: str):
     Output("kpi-row", "children"),
     Input("indicator-dropdown", "value"),
 )
-def update_detail_view(selected_indicator: str):
-  sub = df_long.filter(pl.col("indicator") == selected_indicator).to_pandas()
-  sub["geography"] = pd.Categorical(
-      sub["geography"], categories=GEO_ORDER, ordered=True
+def update_detail_view(selected_indicator: str | None):
+  if not selected_indicator or df_long.height == 0:
+    return {}, []
+
+  sub = (
+      df_long.filter(pl.col("indicator") == selected_indicator)
+      .to_pandas()
+      .assign(
+          geography=lambda d: pd.Categorical(
+              d["geography"], categories=GEO_ORDER, ordered=True
+          )
+      )
+      .sort_values("geography")
+      .reset_index(drop=True)
   )
-  sub = sub.sort_values("geography")
+  if sub.empty:
+    return {}, []
 
   fig = px.bar(
       sub,
@@ -425,8 +458,12 @@ def update_detail_view(selected_indicator: str):
   )
   max_val = float(sub["pct"].max()) if len(sub) else 10.0
   fig.update_layout(
+      autosize=True,
       title={
-          "text": f"{selected_indicator} <span style='color:#6b7280;font-weight:400;font-size:15px'>({sub['year'].iloc[0]})</span>",
+          "text": (
+              f"{selected_indicator} "
+              f"<span style='color:#6b7280;font-weight:400;font-size:15px'>({sub['year'].iloc[0]})</span>"
+          ),
           "font": {"size": 19, "color": "#111827"},
           "x": 0.01,
           "xanchor": "left",
@@ -446,14 +483,20 @@ def update_detail_view(selected_indicator: str):
       font={"family": "Inter, system-ui, -apple-system, sans-serif"},
   )
 
-  detroit_val = sub.loc[sub["geography"] == "Detroit", "pct"].iloc[0]
+  detroit_rows = sub.loc[sub["geography"] == "Detroit", "pct"]
+  detroit_val = float(detroit_rows.iloc[0]) if len(detroit_rows) else None
   gap = sub["detroit_vs_michigan_pp"].iloc[0]
   ratio = sub["detroit_to_michigan_ratio"].iloc[0]
   source_doc = sub["source_doc"].iloc[0]
   notes = sub["notes"].iloc[0]
 
-  gap_display = f"{gap:+.1f} pp" if gap is not None else "—"
-  ratio_sub = f"{ratio:.2f}x Detroit : Michigan ratio" if ratio is not None else "Percentage-point difference (Detroit − MI)"
+  detroit_display = f"{detroit_val:.1f}%" if detroit_val is not None else "—"
+  gap_display = f"{gap:+.1f} pp" if gap is not None and pd.notna(gap) else "—"
+  ratio_sub = (
+      f"{ratio:.2f}x Detroit : Michigan ratio"
+      if ratio is not None and pd.notna(ratio)
+      else "Percentage-point difference (Detroit − MI)"
+  )
 
   cards = [
       html.Div(
@@ -461,11 +504,21 @@ def update_detail_view(selected_indicator: str):
           children=[
               html.Div(
                   "DETROIT SHARE",
-                  style={"fontSize": "11px", "fontWeight": "700", "color": "#6b7280", "letterSpacing": "0.06em"},
+                  style={
+                      "fontSize": "11px",
+                      "fontWeight": "700",
+                      "color": "#6b7280",
+                      "letterSpacing": "0.06em",
+                  },
               ),
               html.Div(
-                  f"{detroit_val:.1f}%",
-                  style={"fontSize": "28px", "fontWeight": "700", "color": "#6b2d5c", "marginTop": "6px"},
+                  detroit_display,
+                  style={
+                      "fontSize": "28px",
+                      "fontWeight": "700",
+                      "color": "#6b2d5c",
+                      "marginTop": "6px",
+                  },
               ),
               html.Div(
                   f"Reporting period: {sub['year'].iloc[0]}",
@@ -478,11 +531,21 @@ def update_detail_view(selected_indicator: str):
           children=[
               html.Div(
                   "VS. MICHIGAN BASELINE",
-                  style={"fontSize": "11px", "fontWeight": "700", "color": "#6b7280", "letterSpacing": "0.06em"},
+                  style={
+                      "fontSize": "11px",
+                      "fontWeight": "700",
+                      "color": "#6b7280",
+                      "letterSpacing": "0.06em",
+                  },
               ),
               html.Div(
                   gap_display,
-                  style={"fontSize": "28px", "fontWeight": "700", "color": "#111827", "marginTop": "6px"},
+                  style={
+                      "fontSize": "28px",
+                      "fontWeight": "700",
+                      "color": "#111827",
+                      "marginTop": "6px",
+                  },
               ),
               html.Div(
                   ratio_sub,
@@ -495,11 +558,21 @@ def update_detail_view(selected_indicator: str):
           children=[
               html.Div(
                   "CONTEXT & SOURCE",
-                  style={"fontSize": "11px", "fontWeight": "700", "color": "#6b7280", "letterSpacing": "0.06em"},
+                  style={
+                      "fontSize": "11px",
+                      "fontWeight": "700",
+                      "color": "#6b7280",
+                      "letterSpacing": "0.06em",
+                  },
               ),
               html.Div(
                   notes or "—",
-                  style={"fontSize": "13px", "color": "#1f2937", "marginTop": "6px", "lineHeight": "1.45"},
+                  style={
+                      "fontSize": "13px",
+                      "color": "#1f2937",
+                      "marginTop": "6px",
+                      "lineHeight": "1.45",
+                  },
               ),
               html.Div(
                   source_doc or "—",
