@@ -1,0 +1,7 @@
+indicator,year,detroit_pct,wayne_pct,michigan_pct,source_doc,notes
+First-trimester prenatal care,2023,69.4,,,City of Detroit Maternal & Infant Health Data Brief,"Detroit births with first-trimester care (2023); Wayne & MI not included in this starter row"
+Late or no prenatal care,2023,12.0,,,City of Detroit Maternal & Infant Health Data Brief,"Detroit births with late or no care (2023); Wayne & MI not included in this starter row"
+WIC during pregnancy,2022,57.4,41.7,30.4,City of Detroit Maternal & Infant Health Data Brief,"Share of pregnant persons receiving WIC nutrition assistance"
+Did not plan to breastfeed,2022,25.9,17.8,11.8,City of Detroit Maternal & Infant Health Data Brief,"Prenatal feeding plan; reflects support, access, and structural conditions"
+Births under age 20,2019-2023,7.9,4.8,3.9,City of Detroit Maternal & Infant Health Data Brief,"Live births to birthing people under age 20"
+Less than 12 years education,2022,20.6,14.0,9.6,City of Detroit Maternal & Infant Health Data Brief,"Educational attainment context among pregnant persons"
