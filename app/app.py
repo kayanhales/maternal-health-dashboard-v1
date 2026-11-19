@@ -315,88 +315,7 @@ app.layout = html.Div(
                         ),
                     ],
                 ),
-                # Overview Tab Content
-                html.Div(
-                    id="overview-tab-content",
-                    children=[
-                        html.Div(
-                            style={**CARD_STYLE, "marginBottom": "18px"},
-                            children=[
-                                dcc.Graph(
-                                    id="overview-chart",
-                                    figure=build_overview_figure(),
-                                    responsive=True,
-                                    config={"displayModeBar": False},
-                                )
-                            ],
-                        ),
-                        html.Div(
-                            style={**CARD_STYLE, "overflowX": "auto"},
-                            children=[
-                                html.Div(
-                                    "DISPARITY SUMMARY TABLE",
-                                    style={
-                                        "fontSize": "11px",
-                                        "fontWeight": "700",
-                                        "letterSpacing": "0.06em",
-                                        "color": "#6b7280",
-                                        "marginBottom": "10px",
-                                    },
-                                ),
-                                build_disparity_table(),
-                            ],
-                        ),
-                    ],
-                ),
-                # Deep Dive Tab Content
-                html.Div(
-                    id="detail-tab-content",
-                    style={"display": "none"},
-                    children=[
-                        html.Div(
-                            style={**CARD_STYLE, "marginBottom": "18px"},
-                            children=[
-                                html.Label(
-                                    "Choose an indicator",
-                                    htmlFor="indicator-dropdown",
-                                    style={
-                                        "display": "block",
-                                        "fontSize": "13px",
-                                        "fontWeight": "600",
-                                        "color": "#374151",
-                                        "marginBottom": "8px",
-                                    },
-                                ),
-                                dcc.Dropdown(
-                                    id="indicator-dropdown",
-                                    options=[{"label": ind, "value": ind} for ind in indicator_order],
-                                    value=indicator_order[0] if indicator_order else None,
-                                    clearable=False,
-                                    style={"maxWidth": "520px", "fontSize": "14px"},
-                                ),
-                            ],
-                        ),
-                        html.Div(
-                            id="kpi-row",
-                            style={
-                                "display": "grid",
-                                "gridTemplateColumns": "repeat(auto-fit, minmax(220px, 1fr))",
-                                "gap": "14px",
-                                "marginBottom": "18px",
-                            },
-                        ),
-                        html.Div(
-                            style=CARD_STYLE,
-                            children=[
-                                dcc.Graph(
-                                    id="comparison-chart",
-                                    responsive=True,
-                                    config={"displayModeBar": False},
-                                )
-                            ],
-                        ),
-                    ],
-                ),
+                html.Div(id="active-tab-content"),
                 build_detroit_only_banner(),
             ],
         )
@@ -405,14 +324,92 @@ app.layout = html.Div(
 
 
 @app.callback(
-    Output("overview-tab-content", "style"),
-    Output("detail-tab-content", "style"),
+    Output("active-tab-content", "children"),
     Input("view-tabs", "value"),
 )
-def toggle_tabs(active_tab: str):
+def render_tab_content(active_tab: str):
   if active_tab == "detail":
-    return {"display": "none"}, {"display": "block"}
-  return {"display": "block"}, {"display": "none"}
+    default_indicator = indicator_order[0] if indicator_order else None
+    return html.Div(
+        children=[
+            html.Div(
+                style={**CARD_STYLE, "marginBottom": "18px"},
+                children=[
+                    html.Label(
+                        "Choose an indicator",
+                        htmlFor="indicator-dropdown",
+                        style={
+                            "display": "block",
+                            "fontSize": "13px",
+                            "fontWeight": "600",
+                            "color": "#374151",
+                            "marginBottom": "8px",
+                        },
+                    ),
+                    dcc.Dropdown(
+                        id="indicator-dropdown",
+                        options=[
+                            {"label": ind, "value": ind} for ind in indicator_order
+                        ],
+                        value=default_indicator,
+                        clearable=False,
+                        style={"maxWidth": "520px", "fontSize": "14px"},
+                    ),
+                ],
+            ),
+            html.Div(
+                id="kpi-row",
+                style={
+                    "display": "grid",
+                    "gridTemplateColumns": "repeat(auto-fit, minmax(220px, 1fr))",
+                    "gap": "14px",
+                    "marginBottom": "18px",
+                },
+            ),
+            html.Div(
+                style=CARD_STYLE,
+                children=[
+                    dcc.Graph(
+                        id="comparison-chart",
+                        responsive=True,
+                        config={"displayModeBar": False},
+                    )
+                ],
+            ),
+        ]
+    )
+
+  return html.Div(
+      children=[
+          html.Div(
+              style={**CARD_STYLE, "marginBottom": "18px"},
+              children=[
+                  dcc.Graph(
+                      id="overview-chart",
+                      figure=build_overview_figure(),
+                      responsive=True,
+                      config={"displayModeBar": False},
+                  )
+              ],
+          ),
+          html.Div(
+              style={**CARD_STYLE, "overflowX": "auto"},
+              children=[
+                  html.Div(
+                      "DISPARITY SUMMARY TABLE",
+                      style={
+                          "fontSize": "11px",
+                          "fontWeight": "700",
+                          "letterSpacing": "0.06em",
+                          "color": "#6b7280",
+                          "marginBottom": "10px",
+                      },
+                  ),
+                  build_disparity_table(),
+              ],
+          ),
+      ]
+  )
 
 
 @app.callback(
