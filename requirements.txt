@@ -1,5 +1,6 @@
 dash==4.5.0
 plotly==7.1.0
+numpy
 polars==2.1.0
 pyarrow==26.0.1
 gunicorn==23.0.0
