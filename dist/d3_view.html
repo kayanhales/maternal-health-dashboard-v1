@@ -164,7 +164,7 @@
 
     .chart-box {
       width: 100%;
-      min-height: 280px;
+      min-height: 240px;
     }
 
     .tooltip {
@@ -246,10 +246,18 @@
       return Number.isFinite(n) ? n : null;
     }
 
+    function extractPct(values, geoName) {
+      if (!Array.isArray(values)) return null;
+      const match = values.find(
+        (v) => String(v.geography ?? "").trim().toLowerCase() === geoName.toLowerCase()
+      );
+      return match ? num(match.pct) : null;
+    }
+
     function normalizeRow(raw) {
-      const detroit = num(raw.detroit_pct ?? raw.detroit);
-      const wayne = num(raw.wayne_pct ?? raw.wayne_county_pct ?? raw.wayne);
-      const michigan = num(raw.michigan_pct ?? raw.michigan);
+      const detroit = extractPct(raw.values, "Detroit") ?? num(raw.detroit_pct);
+      const wayne = extractPct(raw.values, "Wayne County") ?? num(raw.wayne_pct);
+      const michigan = extractPct(raw.values, "Michigan") ?? num(raw.michigan_pct);
 
       const gapMi = num(raw.detroit_vs_michigan_pp) ??
         (detroit !== null && michigan !== null ? +(detroit - michigan).toFixed(1) : null);
@@ -263,7 +271,7 @@
           : null);
 
       return {
-        indicator: String(raw.indicator ?? raw.name ?? "Unnamed Indicator"),
+        indicator: String(raw.indicator ?? "Unnamed Indicator"),
         year: raw.year ?? "",
         detroit_pct: detroit,
         wayne_pct: wayne,
@@ -271,7 +279,7 @@
         detroit_vs_michigan_pp: gapMi,
         detroit_vs_wayne_pp: gapWayne,
         detroit_to_michigan_ratio: ratio,
-        source_doc: raw.source_doc ?? raw.source ?? "",
+        source_doc: raw.source_doc ?? "",
         notes: raw.notes ?? ""
       };
     }
@@ -292,7 +300,7 @@
       const container = d3.select("#overview-chart");
       container.selectAll("*").remove();
 
-      const ranked = rows
+      const ranked = [...rows]
         .filter((d) => d.detroit_pct !== null && d.michigan_pct !== null)
         .sort((a, b) => (b.detroit_to_michigan_ratio ?? -1) - (a.detroit_to_michigan_ratio ?? -1));
 
@@ -302,9 +310,9 @@
       }
 
       const width = container.node().clientWidth || 860;
-      const rowHeight = 46;
-      const margin = { top: 12, right: 64, bottom: 28, left: Math.min(260, Math.max(150, width * 0.28)) };
-      const height = Math.max(240, ranked.length * rowHeight + margin.top + margin.bottom);
+      const rowHeight = 64;
+      const margin = { top: 12, right: 48, bottom: 28, left: Math.min(240, Math.max(150, width * 0.26)) };
+      const height = Math.max(220, ranked.length * rowHeight + margin.top + margin.bottom);
       const innerW = Math.max(200, width - margin.left - margin.right);
       const innerH = height - margin.top - margin.bottom;
 
@@ -313,9 +321,9 @@
       ) || 10;
 
       const x = d3.scaleLinear().domain([0, maxVal * 1.15]).range([0, innerW]);
-      const y0 = d3.scaleBand().domain(ranked.map((d) => d.indicator)).range([0, innerH]).padding(0.24);
+      const y0 = d3.scaleBand().domain(ranked.map((d) => d.indicator)).range([0, innerH]).padding(0.26);
       const geos = ["Detroit", "Wayne County", "Michigan"];
-      const y1 = d3.scaleBand().domain(geos).range([0, y0.bandwidth()]).padding(0.12);
+      const y1 = d3.scaleBand().domain(geos).range([0, y0.bandwidth()]).padding(0.14);
 
       const svg = container
         .append("svg")
@@ -335,6 +343,7 @@
         .call((axis) => axis.select(".domain").remove())
         .selectAll("text")
         .style("font-size", "12px")
+        .style("font-weight", "600")
         .style("fill", "#111827");
 
       const rowGroups = g
@@ -425,8 +434,8 @@
       ].filter((d) => d.val !== null);
 
       const width = container.node().clientWidth || 860;
-      const height = 280;
-      const margin = { top: 20, right: 24, bottom: 36, left: 48 };
+      const height = 260;
+      const margin = { top: 24, right: 24, bottom: 36, left: 48 };
       const innerW = Math.max(200, width - margin.left - margin.right);
       const innerH = height - margin.top - margin.bottom;
 
