@@ -177,10 +177,6 @@
       cursor: pointer;
     }
 
-    .overview-row:hover .row-highlight {
-      opacity: 1;
-    }
-
     .tooltip {
       position: fixed;
       pointer-events: none;
@@ -312,7 +308,6 @@
       tooltip.style("opacity", 0);
     }
 
-    // SVG path with rounded top corners and a flat bottom baseline
     function topRoundedBarPath(x, y, width, height, radius = 5) {
       const w = Math.max(0, width);
       const h = Math.max(0, height);
@@ -344,10 +339,10 @@
 
       const width = container.node().clientWidth || 860;
       const rowHeight = 68;
-      const ratioColWidth = width < 540 ? 52 : 68;
+      const ratioColWidth = width < 540 ? 54 : 72;
       const margin = {
         top: 10,
-        right: ratioColWidth + 12,
+        right: ratioColWidth + 16,
         bottom: 28,
         left: Math.min(235, Math.max(135, width * 0.25))
       };
@@ -370,6 +365,22 @@
         .attr("height", height)
         .attr("viewBox", `0 0 ${width} ${height}`);
 
+      // 1. Background highlight layer drawn first so it never covers labels
+      const bgLayer = svg.append("g").attr("class", "bg-layer");
+      bgLayer
+        .selectAll("rect.row-highlight")
+        .data(ranked)
+        .join("rect")
+        .attr("class", "row-highlight")
+        .attr("x", 4)
+        .attr("y", (d) => margin.top + y0(d.indicator) - 3)
+        .attr("width", Math.max(100, width - 8))
+        .attr("height", y0.bandwidth() + 6)
+        .attr("rx", 8)
+        .attr("fill", (d) => (d._index === selectedIndex ? "#faf4f9" : "transparent"))
+        .attr("stroke", (d) => (d._index === selectedIndex ? "#e2c6dd" : "none"));
+
+      // 2. Main chart layer (axes, bars, values, and ratio badges)
       const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
       g.append("g")
@@ -391,21 +402,33 @@
         .join("g")
         .attr("class", "overview-row")
         .attr("transform", (d) => `translate(0,${y0(d.indicator)})`)
-        .on("click", (_, d) => onSelectIndicator(d._index));
+        .on("click", (_, d) => onSelectIndicator(d._index))
+        .on("mouseenter", function (_, d) {
+          if (d._index !== selectedIndex) {
+            bgLayer
+              .selectAll("rect.row-highlight")
+              .filter((r) => r.indicator === d.indicator)
+              .attr("fill", "#f3f4f6");
+          }
+        })
+        .on("mouseleave", function (_, d) {
+          if (d._index !== selectedIndex) {
+            bgLayer
+              .selectAll("rect.row-highlight")
+              .filter((r) => r.indicator === d.indicator)
+              .attr("fill", "transparent");
+          }
+          hideTooltip();
+        });
 
-      // Subtle active or hover highlight band behind each indicator group
+      // Invisible hit target across the row so clicking any part of the row works smoothly
       rowGroups
         .append("rect")
-        .attr("class", "row-highlight")
-        .attr("x", -margin.left + 4)
+        .attr("x", -margin.left + 6)
         .attr("y", -3)
-        .attr("width", width - 8)
+        .attr("width", Math.max(100, width - 12))
         .attr("height", y0.bandwidth() + 6)
-        .attr("rx", 8)
-        .attr("fill", (d) => (d._index === selectedIndex ? "#faf4f9" : "#f3f4f6"))
-        .attr("stroke", (d) => (d._index === selectedIndex ? "#e2c6dd" : "none"))
-        .style("opacity", (d) => (d._index === selectedIndex ? 1 : 0))
-        .style("transition", "opacity 120ms ease");
+        .attr("fill", "transparent");
 
       geos.forEach((geo) => {
         const key =
@@ -433,8 +456,7 @@
               event,
               `<strong>${d.indicator}</strong><br/>${geo}: <b>${d[key].toFixed(1)}%</b>${ratioText}<br/><span style="color:#d1d5db">Click to inspect in Deep Dive</span>`
             );
-          })
-          .on("mouseleave", hideTooltip);
+          });
 
         validRows
           .append("text")
@@ -447,7 +469,6 @@
           .text((d) => `${d[key].toFixed(1)}%`);
       });
 
-      // Right-side Detroit : Michigan ratio badge
       rowGroups
         .filter((d) => d.detroit_to_michigan_ratio !== null)
         .append("text")
