@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from dash import Dash, Input, Output, dcc, html
-import pandas as pd
 import plotly.express as px
 import polars as pl
 
@@ -15,6 +14,7 @@ GEO_MAP = {
 }
 
 GEO_ORDER = ["Detroit", "Wayne County", "Michigan"]
+GEO_RANK = {name: i for i, name in enumerate(GEO_ORDER)}
 
 GEO_COLORS = {
     "Detroit": "#6b2d5c",
@@ -49,6 +49,7 @@ df_disparity = df_with_metrics.filter(
 ).sort("detroit_to_michigan_ratio", descending=True)
 
 indicator_order = df_disparity["indicator"].to_list()
+indicator_rank = {name: i for i, name in enumerate(indicator_order)}
 
 df_long = (
     df_disparity.unpivot(
@@ -65,8 +66,16 @@ df_long = (
         variable_name="geo_col",
         value_name="pct",
     )
-    .with_columns(pl.col("geo_col").replace(GEO_MAP).alias("geography"))
+    .with_columns(
+        pl.col("geo_col").replace(GEO_MAP).alias("geography"),
+    )
     .drop("geo_col")
+    .with_columns(
+        pl.col("indicator").replace_strict(indicator_rank, default=999).alias("_ind_rank"),
+        pl.col("geography").replace_strict(GEO_RANK, default=999).alias("_geo_rank"),
+    )
+    .sort(["_ind_rank", "_geo_rank"])
+    .drop(["_ind_rank", "_geo_rank"])
 )
 
 df_detroit_only = df_with_metrics.filter(
@@ -76,14 +85,17 @@ df_detroit_only = df_with_metrics.filter(
 
 
 def build_overview_figure():
-  pdf_long = df_long.to_pandas()
-  pdf_long["geography"] = pd.Categorical(
-      pdf_long["geography"], categories=GEO_ORDER, ordered=True
-  )
-  pdf_long = pdf_long.sort_values(["indicator", "geography"]).reset_index(drop=True)
+  data_dict = df_long.select(
+      "indicator",
+      "geography",
+      "pct",
+      "year",
+      "detroit_vs_michigan_pp",
+      "detroit_to_michigan_ratio",
+  ).to_dict(as_series=False)
 
   fig = px.bar(
-      pdf_long,
+      data_dict,
       x="pct",
       y="indicator",
       color="geography",
@@ -108,7 +120,8 @@ def build_overview_figure():
           "Detroit : MI ratio: %{customdata[2]:.2f}x<extra></extra>"
       ),
   )
-  max_pct = float(pdf_long["pct"].max()) if len(pdf_long) else 10.0
+  pct_vals = [v for v in data_dict["pct"] if v is not None]
+  max_pct = max(pct_vals) if pct_vals else 10.0
   fig.update_layout(
       title="Multi-Area Indicators Ranked by Detroit-to-Michigan Ratio",
       xaxis={
@@ -406,23 +419,15 @@ def update_detail_view(selected_indicator: str | None):
   if not selected_indicator or df_long.height == 0:
     return {}, []
 
-  sub = (
-      df_long.filter(pl.col("indicator") == selected_indicator)
-      .to_pandas()
-      .assign(
-          geography=lambda d: pd.Categorical(
-              d["geography"], categories=GEO_ORDER, ordered=True
-          )
-      )
-      .sort_values("geography")
-      .reset_index(drop=True)
-  )
-  if sub.empty:
+  sub = df_long.filter(pl.col("indicator") == selected_indicator)
+  if sub.height == 0:
     return {}, []
 
-  year_label = sub["year"].iloc[0]
+  data_dict = sub.select("geography", "pct").to_dict(as_series=False)
+  year_label = sub["year"][0]
+
   fig = px.bar(
-      sub,
+      data_dict,
       x="geography",
       y="pct",
       color="geography",
@@ -439,7 +444,8 @@ def update_detail_view(selected_indicator: str | None):
       marker_line_width=0,
       width=0.52,
   )
-  max_val = float(sub["pct"].max()) if len(sub) else 10.0
+  pct_vals = [v for v in data_dict["pct"] if v is not None]
+  max_val = max(pct_vals) if pct_vals else 10.0
   fig.update_layout(
       title=f"{selected_indicator} ({year_label})",
       showlegend=False,
@@ -457,18 +463,18 @@ def update_detail_view(selected_indicator: str | None):
       font={"family": "Inter, system-ui, -apple-system, sans-serif"},
   )
 
-  detroit_rows = sub.loc[sub["geography"] == "Detroit", "pct"]
-  detroit_val = float(detroit_rows.iloc[0]) if len(detroit_rows) else None
-  gap = sub["detroit_vs_michigan_pp"].iloc[0]
-  ratio = sub["detroit_to_michigan_ratio"].iloc[0]
-  source_doc = sub["source_doc"].iloc[0]
-  notes = sub["notes"].iloc[0]
+  detroit_rows = sub.filter(pl.col("geography") == "Detroit")["pct"]
+  detroit_val = float(detroit_rows[0]) if len(detroit_rows) and detroit_rows[0] is not None else None
+  gap = sub["detroit_vs_michigan_pp"][0]
+  ratio = sub["detroit_to_michigan_ratio"][0]
+  source_doc = sub["source_doc"][0]
+  notes = sub["notes"][0]
 
   detroit_display = f"{detroit_val:.1f}%" if detroit_val is not None else "—"
-  gap_display = f"{gap:+.1f} pp" if gap is not None and pd.notna(gap) else "—"
+  gap_display = f"{gap:+.1f} pp" if gap is not None else "—"
   ratio_sub = (
       f"{ratio:.2f}x Detroit : Michigan ratio"
-      if ratio is not None and pd.notna(ratio)
+      if ratio is not None
       else "Percentage-point difference (Detroit − MI)"
   )
 
