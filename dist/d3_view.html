@@ -18,7 +18,7 @@
       --michigan: #cbd2d9;
     }
 
-    * {
+    *, *::before, *::after {
       box-sizing: border-box;
     }
 
@@ -195,7 +195,7 @@
 </head>
 <body>
   <div class="page">
-    <div class="eyebrow">Mothering Justice · Maternal Health Equity</div>
+    <div class="eyebrow">Maternal Health Equity · Practice &amp; Portfolio</div>
     <h1>Detroit Maternal &amp; Structural Health Indicators</h1>
     <p class="subtitle">
       Static browser-rendered view powered by pre-computed disparity metrics in <code>indicators.json</code>.
@@ -508,8 +508,15 @@
         select.on("change", updateAll);
         updateAll();
 
-        const ro = new ResizeObserver(updateAll);
-        ro.observe(document.querySelector(".page"));
+        let lastWidth = document.querySelector("#overview-chart").clientWidth;
+        const ro = new ResizeObserver((entries) => {
+          const nextWidth = entries[0]?.contentRect?.width ?? 0;
+          if (Math.abs(nextWidth - lastWidth) > 2) {
+            lastWidth = nextWidth;
+            updateAll();
+          }
+        });
+        ro.observe(document.querySelector("#overview-chart"));
       })
       .catch((err) => {
         d3.select("#status-container")
