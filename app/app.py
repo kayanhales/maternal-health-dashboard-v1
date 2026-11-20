@@ -32,7 +32,6 @@ CARD_STYLE = {
 
 df_clean = pl.read_parquet(PARQUET_PATH)
 
-# Ensure gap and ratio columns exist even if parquet was generated before adding them
 df_with_metrics = df_clean.with_columns(
     (pl.col("detroit_pct") - pl.col("michigan_pct"))
     .round(1)
@@ -45,7 +44,6 @@ df_with_metrics = df_clean.with_columns(
     .alias("detroit_to_michigan_ratio"),
 )
 
-# Complete 3-area comparison rows ranked by Detroit-to-Michigan ratio
 df_disparity = df_with_metrics.filter(
     pl.all_horizontal(pl.col(col).is_not_null() for col in GEO_MAP.keys())
 ).sort("detroit_to_michigan_ratio", descending=True)
@@ -71,14 +69,13 @@ df_long = (
     .drop("geo_col")
 )
 
-# Detroit-only rows (e.g., prenatal care rows without Wayne/MI comparison values)
 df_detroit_only = df_with_metrics.filter(
     pl.col("detroit_pct").is_not_null()
     & (pl.col("wayne_pct").is_null() | pl.col("michigan_pct").is_null())
 )
 
 
-def build_overview_figure() -> px.Figure:
+def build_overview_figure():
   pdf_long = df_long.to_pandas()
   pdf_long["geography"] = pd.Categorical(
       pdf_long["geography"], categories=GEO_ORDER, ordered=True
@@ -113,28 +110,15 @@ def build_overview_figure() -> px.Figure:
   )
   max_pct = float(pdf_long["pct"].max()) if len(pdf_long) else 10.0
   fig.update_layout(
-      autosize=True,
-      title={
-          "text": "Multi-Area Indicators Ranked by Detroit-to-Michigan Ratio",
-          "font": {"size": 18, "color": "#111827"},
-          "x": 0.01,
-          "xanchor": "left",
-      },
+      title="Multi-Area Indicators Ranked by Detroit-to-Michigan Ratio",
       xaxis={
           "range": [0, max(max_pct * 1.18, 15)],
           "ticksuffix": "%",
           "gridcolor": "#f1f5f9",
           "zerolinecolor": "#e5e7eb",
       },
-      yaxis={"showgrid": False, "tickfont": {"size": 13, "color": "#1f2937"}},
-      legend={
-          "orientation": "h",
-          "yanchor": "bottom",
-          "y": 1.02,
-          "xanchor": "right",
-          "x": 1.0,
-          "title_text": "",
-      },
+      yaxis={"showgrid": False},
+      legend={"orientation": "h", "y": 1.08, "x": 1.0, "xanchor": "right", "title_text": ""},
       margin={"t": 72, "b": 32, "l": 18, "r": 48},
       height=max(320, 95 * len(indicator_order)),
       paper_bgcolor="#ffffff",
@@ -144,7 +128,7 @@ def build_overview_figure() -> px.Figure:
   return fig
 
 
-def build_disparity_table() -> html.Table:
+def build_disparity_table():
   rows_html = []
   for r in df_disparity.iter_rows(named=True):
     gap = r["detroit_vs_michigan_pp"]
@@ -201,7 +185,7 @@ def build_disparity_table() -> html.Table:
   )
 
 
-def build_detroit_only_banner() -> html.Div | None:
+def build_detroit_only_banner():
   if df_detroit_only.height == 0:
     return None
   items = [
@@ -243,6 +227,8 @@ def build_detroit_only_banner() -> html.Div | None:
 app = Dash(__name__)
 server = app.server
 app.title = "Mothering Justice — Detroit Maternal Health"
+
+default_indicator = indicator_order[0] if indicator_order else None
 
 app.layout = html.Div(
     style={
@@ -315,7 +301,84 @@ app.layout = html.Div(
                         ),
                     ],
                 ),
-                html.Div(id="active-tab-content"),
+                html.Div(
+                    id="overview-tab-content",
+                    children=[
+                        html.Div(
+                            style={**CARD_STYLE, "marginBottom": "18px"},
+                            children=[
+                                dcc.Graph(
+                                    id="overview-chart",
+                                    figure=build_overview_figure(),
+                                    config={"displayModeBar": False},
+                                )
+                            ],
+                        ),
+                        html.Div(
+                            style={**CARD_STYLE, "overflowX": "auto"},
+                            children=[
+                                html.Div(
+                                    "DISPARITY SUMMARY TABLE",
+                                    style={
+                                        "fontSize": "11px",
+                                        "fontWeight": "700",
+                                        "letterSpacing": "0.06em",
+                                        "color": "#6b7280",
+                                        "marginBottom": "10px",
+                                    },
+                                ),
+                                build_disparity_table(),
+                            ],
+                        ),
+                    ],
+                ),
+                html.Div(
+                    id="detail-tab-content",
+                    style={"display": "none"},
+                    children=[
+                        html.Div(
+                            style={**CARD_STYLE, "marginBottom": "18px"},
+                            children=[
+                                html.Label(
+                                    "Choose an indicator",
+                                    htmlFor="indicator-dropdown",
+                                    style={
+                                        "display": "block",
+                                        "fontSize": "13px",
+                                        "fontWeight": "600",
+                                        "color": "#374151",
+                                        "marginBottom": "8px",
+                                    },
+                                ),
+                                dcc.Dropdown(
+                                    id="indicator-dropdown",
+                                    options=[{"label": ind, "value": ind} for ind in indicator_order],
+                                    value=default_indicator,
+                                    clearable=False,
+                                    style={"maxWidth": "520px", "fontSize": "14px"},
+                                ),
+                            ],
+                        ),
+                        html.Div(
+                            id="kpi-row",
+                            style={
+                                "display": "grid",
+                                "gridTemplateColumns": "repeat(auto-fit, minmax(220px, 1fr))",
+                                "gap": "14px",
+                                "marginBottom": "18px",
+                            },
+                        ),
+                        html.Div(
+                            style=CARD_STYLE,
+                            children=[
+                                dcc.Graph(
+                                    id="comparison-chart",
+                                    config={"displayModeBar": False},
+                                )
+                            ],
+                        ),
+                    ],
+                ),
                 build_detroit_only_banner(),
             ],
         )
@@ -324,92 +387,14 @@ app.layout = html.Div(
 
 
 @app.callback(
-    Output("active-tab-content", "children"),
+    Output("overview-tab-content", "style"),
+    Output("detail-tab-content", "style"),
     Input("view-tabs", "value"),
 )
-def render_tab_content(active_tab: str):
+def toggle_tabs(active_tab: str):
   if active_tab == "detail":
-    default_indicator = indicator_order[0] if indicator_order else None
-    return html.Div(
-        children=[
-            html.Div(
-                style={**CARD_STYLE, "marginBottom": "18px"},
-                children=[
-                    html.Label(
-                        "Choose an indicator",
-                        htmlFor="indicator-dropdown",
-                        style={
-                            "display": "block",
-                            "fontSize": "13px",
-                            "fontWeight": "600",
-                            "color": "#374151",
-                            "marginBottom": "8px",
-                        },
-                    ),
-                    dcc.Dropdown(
-                        id="indicator-dropdown",
-                        options=[
-                            {"label": ind, "value": ind} for ind in indicator_order
-                        ],
-                        value=default_indicator,
-                        clearable=False,
-                        style={"maxWidth": "520px", "fontSize": "14px"},
-                    ),
-                ],
-            ),
-            html.Div(
-                id="kpi-row",
-                style={
-                    "display": "grid",
-                    "gridTemplateColumns": "repeat(auto-fit, minmax(220px, 1fr))",
-                    "gap": "14px",
-                    "marginBottom": "18px",
-                },
-            ),
-            html.Div(
-                style=CARD_STYLE,
-                children=[
-                    dcc.Graph(
-                        id="comparison-chart",
-                        responsive=True,
-                        config={"displayModeBar": False},
-                    )
-                ],
-            ),
-        ]
-    )
-
-  return html.Div(
-      children=[
-          html.Div(
-              style={**CARD_STYLE, "marginBottom": "18px"},
-              children=[
-                  dcc.Graph(
-                      id="overview-chart",
-                      figure=build_overview_figure(),
-                      responsive=True,
-                      config={"displayModeBar": False},
-                  )
-              ],
-          ),
-          html.Div(
-              style={**CARD_STYLE, "overflowX": "auto"},
-              children=[
-                  html.Div(
-                      "DISPARITY SUMMARY TABLE",
-                      style={
-                          "fontSize": "11px",
-                          "fontWeight": "700",
-                          "letterSpacing": "0.06em",
-                          "color": "#6b7280",
-                          "marginBottom": "10px",
-                      },
-                  ),
-                  build_disparity_table(),
-              ],
-          ),
-      ]
-  )
+    return {"display": "none"}, {"display": "block"}
+  return {"display": "block"}, {"display": "none"}
 
 
 @app.callback(
@@ -435,6 +420,7 @@ def update_detail_view(selected_indicator: str | None):
   if sub.empty:
     return {}, []
 
+  year_label = sub["year"].iloc[0]
   fig = px.bar(
       sub,
       x="geography",
@@ -455,16 +441,7 @@ def update_detail_view(selected_indicator: str | None):
   )
   max_val = float(sub["pct"].max()) if len(sub) else 10.0
   fig.update_layout(
-      autosize=True,
-      title={
-          "text": (
-              f"{selected_indicator} "
-              f"<span style='color:#6b7280;font-weight:400;font-size:15px'>({sub['year'].iloc[0]})</span>"
-          ),
-          "font": {"size": 19, "color": "#111827"},
-          "x": 0.01,
-          "xanchor": "left",
-      },
+      title=f"{selected_indicator} ({year_label})",
       showlegend=False,
       yaxis={
           "range": [0, max(max_val * 1.22, 10)],
@@ -472,7 +449,7 @@ def update_detail_view(selected_indicator: str | None):
           "gridcolor": "#f1f5f9",
           "zerolinecolor": "#e5e7eb",
       },
-      xaxis={"showgrid": False, "tickfont": {"size": 13, "color": "#1f2937"}},
+      xaxis={"showgrid": False},
       margin={"t": 56, "b": 28, "l": 48, "r": 24},
       height=360,
       paper_bgcolor="#ffffff",
@@ -518,7 +495,7 @@ def update_detail_view(selected_indicator: str | None):
                   },
               ),
               html.Div(
-                  f"Reporting period: {sub['year'].iloc[0]}",
+                  f"Reporting period: {year_label}",
                   style={"fontSize": "12px", "color": "#6b7280", "marginTop": "4px"},
               ),
           ],
