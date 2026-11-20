@@ -3,131 +3,234 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mothering Justice — D3 Comparison</title>
+  <title>Detroit Maternal &amp; Structural Health Indicators</title>
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <style>
-    body {
-      font-family: Inter, system-ui, -apple-system, sans-serif;
-      background: #f8f9fb;
-      color: #111827;
-      margin: 0;
-      padding: 32px 20px;
+    :root {
+      --bg: #f8f9fb;
+      --surface: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #4b5563;
+      --plum: #6b2d5c;
+      --plum-soft: #faf4f9;
+      --wayne: #9aa5b1;
+      --michigan: #cbd2d9;
     }
-    .wrap {
-      max-width: 960px;
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 36px 20px 64px;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .page {
+      max-width: 980px;
       margin: 0 auto;
     }
+
     .eyebrow {
       font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.08em;
-      color: #6b2d5c;
-      margin-bottom: 6px;
+      text-transform: uppercase;
+      color: var(--plum);
+      margin-bottom: 8px;
     }
+
     h1 {
-      font-size: 26px;
-      margin: 0 0 6px 0;
+      margin: 0 0 8px;
+      font-size: clamp(24px, 3.2vw, 32px);
+      line-height: 1.2;
     }
+
     .subtitle {
-      color: #4b5563;
-      font-size: 14px;
-      margin: 0 0 24px 0;
+      margin: 0 0 28px;
+      color: var(--muted);
+      font-size: 15px;
     }
+
     .card {
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 18px 20px;
-      margin-bottom: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 22px;
       box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     }
-    .card-title {
-      font-size: 15px;
-      font-weight: 700;
-      margin: 0 0 12px 0;
-    }
-    .controls {
+
+    .card-header {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
+      justify-content: space-between;
       gap: 12px;
       margin-bottom: 16px;
-      flex-wrap: wrap;
     }
-    select {
+
+    .card-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .swatch {
+      width: 11px;
+      height: 11px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    label[for="indicator-select"] {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    select#indicator-select {
+      font: inherit;
+      font-size: 14px;
       padding: 8px 12px;
       border-radius: 8px;
       border: 1px solid #d1d5db;
-      font-size: 14px;
-      background: #fff;
-      min-width: 280px;
+      background: #ffffff;
+      color: var(--text);
+      min-width: 240px;
+      max-width: 100%;
     }
-    .kpis {
+
+    .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
       gap: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
     }
+
     .kpi {
-      border: 1px solid #eef0f3;
+      background: var(--plum-soft);
+      border: 1px solid #ead8e6;
       border-radius: 10px;
       padding: 12px 14px;
-      background: #fafafa;
     }
+
     .kpi-label {
       font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.06em;
-      color: #6b7280;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
     }
-    .kpi-val {
-      font-size: 24px;
+
+    .kpi-value {
+      margin-top: 4px;
+      font-size: 20px;
       font-weight: 700;
-      margin-top: 4px;
-      color: #6b2d5c;
+      color: var(--text);
     }
-    .kpi-sub {
-      font-size: 12px;
-      color: #6b7280;
-      margin-top: 4px;
+
+    .meta-note {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--muted);
     }
+
+    .chart-box {
+      width: 100%;
+      min-height: 280px;
+    }
+
     .tooltip {
       position: fixed;
       pointer-events: none;
       background: #111827;
       color: #ffffff;
-      padding: 8px 10px;
+      padding: 8px 11px;
       border-radius: 8px;
       font-size: 12px;
       line-height: 1.4;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.2);
       opacity: 0;
-      transition: opacity 0.12s ease;
-      z-index: 10;
+      transition: opacity 120ms ease;
+      z-index: 50;
+      max-width: 280px;
+    }
+
+    .error-banner {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="eyebrow">MOTHERING JUSTICE · D3 PROTOTYPE</div>
+  <div class="page">
+    <div class="eyebrow">Mothering Justice · Maternal Health Equity</div>
     <h1>Detroit Maternal &amp; Structural Health Indicators</h1>
-    <p class="subtitle">Rendered directly in the browser with D3.js from pre-computed disparity metrics.</p>
+    <p class="subtitle">
+      Static browser-rendered view powered by pre-computed disparity metrics in <code>indicators.json</code>.
+    </p>
 
-    <div class="card">
-      <div class="card-title">All Indicators Overview (Ranked by Detroit : Michigan Ratio)</div>
-      <div id="overview-chart"></div>
-    </div>
+    <div id="status-container"></div>
 
-    <div class="card">
-      <div class="card-title">Single Indicator Deep Dive</div>
-      <div class="controls">
-        <label for="indicator-select"><strong>Choose an indicator:</strong></label>
-        <select id="indicator-select"></select>
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">All Indicators Overview (Ranked by Detroit : Michigan Ratio)</h2>
+        <div class="legend" aria-label="Chart legend">
+          <span class="legend-item"><span class="swatch" style="background: var(--plum);"></span>Detroit</span>
+          <span class="legend-item"><span class="swatch" style="background: var(--wayne);"></span>Wayne County</span>
+          <span class="legend-item"><span class="swatch" style="background: var(--michigan);"></span>Michigan</span>
+        </div>
       </div>
-      <div class="kpis" id="kpi-cards"></div>
-      <div id="detail-chart"></div>
-    </div>
+      <div id="overview-chart" class="chart-box"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">Single Indicator Deep Dive</h2>
+        <div class="controls">
+          <label for="indicator-select">Indicator</label>
+          <select id="indicator-select"></select>
+        </div>
+      </div>
+
+      <div id="kpi-grid" class="kpi-grid"></div>
+      <div id="detail-chart" class="chart-box"></div>
+      <div id="indicator-meta" class="meta-note"></div>
+    </section>
   </div>
 
-  <div class="tooltip" id="tooltip"></div>
+  <div id="tooltip" class="tooltip" role="tooltip"></div>
 
   <script>
     const GEO_COLORS = {
@@ -135,14 +238,49 @@
       "Wayne County": "#9aa5b1",
       "Michigan": "#cbd2d9"
     };
-    const GEO_ORDER = ["Detroit", "Wayne County", "Michigan"];
+
     const tooltip = d3.select("#tooltip");
+
+    function num(val) {
+      const n = Number(val);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function normalizeRow(raw) {
+      const detroit = num(raw.detroit_pct ?? raw.detroit);
+      const wayne = num(raw.wayne_pct ?? raw.wayne_county_pct ?? raw.wayne);
+      const michigan = num(raw.michigan_pct ?? raw.michigan);
+
+      const gapMi = num(raw.detroit_vs_michigan_pp) ??
+        (detroit !== null && michigan !== null ? +(detroit - michigan).toFixed(1) : null);
+
+      const gapWayne = num(raw.detroit_vs_wayne_pp) ??
+        (detroit !== null && wayne !== null ? +(detroit - wayne).toFixed(1) : null);
+
+      const ratio = num(raw.detroit_to_michigan_ratio) ??
+        (detroit !== null && michigan !== null && michigan !== 0
+          ? +(detroit / michigan).toFixed(2)
+          : null);
+
+      return {
+        indicator: String(raw.indicator ?? raw.name ?? "Unnamed Indicator"),
+        year: raw.year ?? "",
+        detroit_pct: detroit,
+        wayne_pct: wayne,
+        michigan_pct: michigan,
+        detroit_vs_michigan_pp: gapMi,
+        detroit_vs_wayne_pp: gapWayne,
+        detroit_to_michigan_ratio: ratio,
+        source_doc: raw.source_doc ?? raw.source ?? "",
+        notes: raw.notes ?? ""
+      };
+    }
 
     function showTooltip(event, html) {
       tooltip
         .html(html)
-        .style("left", `${event.clientX + 12}px`)
-        .style("top", `${event.clientY + 12}px`)
+        .style("left", `${Math.min(event.clientX + 14, window.innerWidth - 290)}px`)
+        .style("top", `${Math.min(event.clientY + 14, window.innerHeight - 90)}px`)
         .style("opacity", 1);
     }
 
@@ -150,206 +288,234 @@
       tooltip.style("opacity", 0);
     }
 
-    function renderOverview(data) {
+    function renderOverview(rows) {
       const container = d3.select("#overview-chart");
       container.selectAll("*").remove();
 
-      const margin = { top: 24, right: 56, bottom: 32, left: 220 };
-      const width = Math.max(540, container.node().clientWidth) - margin.left - margin.right;
-      const height = Math.max(280, data.length * 64);
+      const ranked = rows
+        .filter((d) => d.detroit_pct !== null && d.michigan_pct !== null)
+        .sort((a, b) => (b.detroit_to_michigan_ratio ?? -1) - (a.detroit_to_michigan_ratio ?? -1));
+
+      if (!ranked.length) {
+        container.append("p").attr("class", "meta-note").text("No multi-geography rows available for ranking.");
+        return;
+      }
+
+      const width = container.node().clientWidth || 860;
+      const rowHeight = 46;
+      const margin = { top: 12, right: 64, bottom: 28, left: Math.min(260, Math.max(150, width * 0.28)) };
+      const height = Math.max(240, ranked.length * rowHeight + margin.top + margin.bottom);
+      const innerW = Math.max(200, width - margin.left - margin.right);
+      const innerH = height - margin.top - margin.bottom;
+
+      const maxVal = d3.max(ranked, (d) =>
+        d3.max([d.detroit_pct, d.wayne_pct, d.michigan_pct].filter((v) => v !== null))
+      ) || 10;
+
+      const x = d3.scaleLinear().domain([0, maxVal * 1.15]).range([0, innerW]);
+      const y0 = d3.scaleBand().domain(ranked.map((d) => d.indicator)).range([0, innerH]).padding(0.24);
+      const geos = ["Detroit", "Wayne County", "Michigan"];
+      const y1 = d3.scaleBand().domain(geos).range([0, y0.bandwidth()]).padding(0.12);
 
       const svg = container
         .append("svg")
-        .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
-        .style("width", "100%")
-        .style("height", "auto");
+        .attr("width", width)
+        .attr("height", height)
+        .attr("viewBox", `0 0 ${width} ${height}`);
 
       const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-      const y0 = d3.scaleBand()
-        .domain(data.map(d => d.indicator))
-        .range([0, height])
-        .paddingInner(0.25);
-
-      const y1 = d3.scaleBand()
-        .domain(GEO_ORDER)
-        .range([0, y0.bandwidth()])
-        .padding(0.12);
-
-      const maxPct = d3.max(data, d => d3.max(d.values, v => v.pct)) || 10;
-      const x = d3.scaleLinear()
-        .domain([0, maxPct * 1.18])
-        .range([0, width]);
+      g.append("g")
+        .attr("transform", `translate(0,${innerH})`)
+        .call(d3.axisBottom(x).ticks(5).tickFormat((d) => `${d}%`))
+        .call((axis) => axis.select(".domain").attr("stroke", "#e5e7eb"));
 
       g.append("g")
         .call(d3.axisLeft(y0).tickSize(0))
+        .call((axis) => axis.select(".domain").remove())
         .selectAll("text")
         .style("font-size", "12px")
-        .style("fill", "#1f2937");
+        .style("fill", "#111827");
 
-      g.append("g")
-        .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x).ticks(5).tickFormat(d => `${d}%`));
-
-      const groups = g.selectAll(".ind-group")
-        .data(data)
+      const rowGroups = g
+        .selectAll(".row-group")
+        .data(ranked)
         .join("g")
-        .attr("class", "ind-group")
-        .attr("transform", d => `translate(0,${y0(d.indicator)})`);
+        .attr("class", "row-group")
+        .attr("transform", (d) => `translate(0,${y0(d.indicator)})`);
 
-      groups.selectAll("rect")
-        .data(d => d.values.map(v => ({ ...v, indicator: d.indicator, year: d.year, ratio: d.detroit_to_michigan_ratio })))
-        .join("rect")
-        .attr("x", 0)
-        .attr("y", d => y1(d.geography))
-        .attr("height", y1.bandwidth())
-        .attr("width", d => x(d.pct))
-        .attr("rx", 3)
-        .attr("fill", d => GEO_COLORS[d.geography])
-        .on("mousemove", (event, d) => {
-          showTooltip(
-            event,
-            `<strong>${d.indicator}</strong> (${d.year})<br/>${d.geography}: <strong>${d.pct.toFixed(1)}%</strong><br/>Detroit : MI ratio: ${d.ratio.toFixed(2)}x`
-          );
-        })
-        .on("mouseleave", hideTooltip);
+      geos.forEach((geo) => {
+        const key =
+          geo === "Detroit"
+            ? "detroit_pct"
+            : geo === "Wayne County"
+              ? "wayne_pct"
+              : "michigan_pct";
 
-      groups.selectAll(".bar-label")
-        .data(d => d.values)
-        .join("text")
-        .attr("class", "bar-label")
-        .attr("x", d => x(d.pct) + 6)
-        .attr("y", d => y1(d.geography) + y1.bandwidth() / 2 + 4)
-        .style("font-size", "11px")
-        .style("fill", "#374151")
-        .text(d => `${d.pct.toFixed(1)}%`);
+        rowGroups
+          .filter((d) => d[key] !== null)
+          .append("rect")
+          .attr("x", 0)
+          .attr("y", y1(geo))
+          .attr("width", (d) => x(d[key]))
+          .attr("height", y1.bandwidth())
+          .attr("rx", 3)
+          .attr("fill", GEO_COLORS[geo])
+          .on("mousemove", (event, d) => {
+            const ratioText = d.detroit_to_michigan_ratio !== null
+              ? `<br/>Detroit : Michigan ratio: <b>${d.detroit_to_michigan_ratio.toFixed(2)}x</b>`
+              : "";
+            showTooltip(
+              event,
+              `<strong>${d.indicator}</strong><br/>${geo}: <b>${d[key].toFixed(1)}%</b>${ratioText}`
+            );
+          })
+          .on("mouseleave", hideTooltip);
+      });
     }
 
-    function renderDetail(item) {
-      const detroit = item.values.find(v => v.geography === "Detroit")?.pct;
-      const gap = item.detroit_vs_michigan_pp;
-      const ratio = item.detroit_to_michigan_ratio;
+    function renderDetail(row) {
+      const kpiGrid = d3.select("#kpi-grid");
+      kpiGrid.selectAll("*").remove();
 
-      d3.select("#kpi-cards").html(`
-        <div class="kpi">
-          <div class="kpi-label">DETROIT SHARE</div>
-          <div class="kpi-val">${detroit != null ? detroit.toFixed(1) + "%" : "—"}</div>
-          <div class="kpi-sub">Reporting period: ${item.year}</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">VS. MICHIGAN BASELINE</div>
-          <div class="kpi-val" style="color:#111827">${gap != null ? (gap >= 0 ? "+" : "") + gap.toFixed(1) + " pp" : "—"}</div>
-          <div class="kpi-sub">${ratio != null ? ratio.toFixed(2) + "x Detroit : Michigan ratio" : "Percentage-point gap"}</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">CONTEXT &amp; SOURCE</div>
-          <div class="kpi-sub" style="color:#1f2937;font-size:13px;margin-top:6px">${item.notes || "—"}</div>
-          <div class="kpi-sub">${item.source_doc || "—"}</div>
-        </div>
-      `);
+      const kpis = [
+        {
+          label: "Detroit Rate",
+          value: row.detroit_pct !== null ? `${row.detroit_pct.toFixed(1)}%` : "N/A"
+        },
+        {
+          label: "Gap vs. Michigan",
+          value: row.detroit_vs_michigan_pp !== null
+            ? `${row.detroit_vs_michigan_pp >= 0 ? "+" : ""}${row.detroit_vs_michigan_pp.toFixed(1)} pp`
+            : "N/A"
+        },
+        {
+          label: "Gap vs. Wayne County",
+          value: row.detroit_vs_wayne_pp !== null
+            ? `${row.detroit_vs_wayne_pp >= 0 ? "+" : ""}${row.detroit_vs_wayne_pp.toFixed(1)} pp`
+            : "N/A"
+        },
+        {
+          label: "Detroit : Michigan Ratio",
+          value: row.detroit_to_michigan_ratio !== null
+            ? `${row.detroit_to_michigan_ratio.toFixed(2)}x`
+            : "N/A"
+        }
+      ];
+
+      kpis.forEach((item) => {
+        const card = kpiGrid.append("div").attr("class", "kpi");
+        card.append("div").attr("class", "kpi-label").text(item.label);
+        card.append("div").attr("class", "kpi-value").text(item.value);
+      });
+
+      const metaParts = [];
+      if (row.year) metaParts.push(`Year: ${row.year}`);
+      if (row.notes) metaParts.push(row.notes);
+      if (row.source_doc) metaParts.push(`Source: ${row.source_doc}`);
+      d3.select("#indicator-meta").text(metaParts.join(" · "));
 
       const container = d3.select("#detail-chart");
       container.selectAll("*").remove();
 
-      const margin = { top: 20, right: 24, bottom: 32, left: 48 };
-      const width = Math.max(400, container.node().clientWidth) - margin.left - margin.right;
-      const height = 270;
+      const series = [
+        { geo: "Detroit", val: row.detroit_pct },
+        { geo: "Wayne County", val: row.wayne_pct },
+        { geo: "Michigan", val: row.michigan_pct }
+      ].filter((d) => d.val !== null);
+
+      const width = container.node().clientWidth || 860;
+      const height = 280;
+      const margin = { top: 20, right: 24, bottom: 36, left: 48 };
+      const innerW = Math.max(200, width - margin.left - margin.right);
+      const innerH = height - margin.top - margin.bottom;
+
+      const maxVal = d3.max(series, (d) => d.val) || 10;
+      const x = d3.scaleBand().domain(series.map((d) => d.geo)).range([0, innerW]).padding(0.35);
+      const y = d3.scaleLinear().domain([0, maxVal * 1.2]).range([innerH, 0]);
 
       const svg = container
         .append("svg")
-        .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
-        .style("width", "100%")
-        .style("height", "auto");
+        .attr("width", width)
+        .attr("height", height)
+        .attr("viewBox", `0 0 ${width} ${height}`);
 
       const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-      const x = d3.scaleBand()
-        .domain(GEO_ORDER)
-        .range([0, width])
-        .padding(0.32);
-
-      const maxPct = d3.max(item.values, d => d.pct) || 10;
-      const y = d3.scaleLinear()
-        .domain([0, maxPct * 1.22])
-        .range([height, 0]);
+      g.append("g")
+        .attr("transform", `translate(0,${innerH})`)
+        .call(d3.axisBottom(x))
+        .call((axis) => axis.select(".domain").attr("stroke", "#e5e7eb"));
 
       g.append("g")
-        .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x).tickSize(0));
+        .call(d3.axisLeft(y).ticks(5).tickFormat((d) => `${d}%`))
+        .call((axis) => axis.select(".domain").remove());
 
-      g.append("g")
-        .call(d3.axisLeft(y).ticks(5).tickFormat(d => `${d}%`));
-
-      const bars = g.selectAll("rect")
-        .data(item.values)
+      g.selectAll("rect")
+        .data(series)
         .join("rect")
-        .attr("x", d => x(d.geography))
+        .attr("x", (d) => x(d.geo))
+        .attr("y", (d) => y(d.val))
         .attr("width", x.bandwidth())
-        .attr("y", height)
-        .attr("height", 0)
-        .attr("rx", 4)
-        .attr("fill", d => GEO_COLORS[d.geography])
+        .attr("height", (d) => Math.max(0, innerH - y(d.val)))
+        .attr("rx", 5)
+        .attr("fill", (d) => GEO_COLORS[d.geo] || "#6b2d5c")
         .on("mousemove", (event, d) => {
-          showTooltip(event, `<strong>${d.geography}</strong>: <strong>${d.pct.toFixed(1)}%</strong>`);
+          showTooltip(event, `<strong>${d.geo}</strong>: ${d.val.toFixed(1)}%`);
         })
         .on("mouseleave", hideTooltip);
 
-      bars.transition()
-        .duration(350)
-        .attr("y", d => y(d.pct))
-        .attr("height", d => height - y(d.pct));
-
-      g.selectAll(".val-label")
-        .data(item.values)
+      g.selectAll(".bar-label")
+        .data(series)
         .join("text")
-        .attr("class", "val-label")
-        .attr("x", d => x(d.geography) + x.bandwidth() / 2)
-        .attr("y", d => y(d.pct) - 8)
+        .attr("class", "bar-label")
+        .attr("x", (d) => x(d.geo) + x.bandwidth() / 2)
+        .attr("y", (d) => y(d.val) - 6)
         .attr("text-anchor", "middle")
         .style("font-size", "12px")
         .style("font-weight", "600")
         .style("fill", "#111827")
-        .text(d => `${d.pct.toFixed(1)}%`);
-    }
-
-    function initDashboard(data) {
-      renderOverview(data);
-
-      const select = d3.select("#indicator-select");
-      select.selectAll("option")
-        .data(data)
-        .join("option")
-        .attr("value", d => d.indicator)
-        .text(d => d.indicator);
-
-      renderDetail(data[0]);
-
-      select.on("change", function () {
-        const chosen = data.find(d => d.indicator === this.value);
-        if (chosen) renderDetail(chosen);
-      });
+        .text((d) => `${d.val.toFixed(1)}%`);
     }
 
     d3.json("./indicators.json")
-      .then(data => initDashboard(data))
-      .catch(() => {
-        // Fallback sample if opened directly without serving ./indicators.json
-        initDashboard([
-          {
-            indicator: "Sample Indicator",
-            year: "2023",
-            source_doc: "Local preview",
-            notes: "Run scripts/export_json.py and serve dist/ to load real Parquet data.",
-            detroit_vs_michigan_pp: 6.4,
-            detroit_vs_wayne_pp: 3.1,
-            detroit_to_michigan_ratio: 1.85,
-            values: [
-              { geography: "Detroit", pct: 14.0 },
-              { geography: "Wayne County", pct: 10.9 },
-              { geography: "Michigan", pct: 7.6 }
-            ]
-          }
-        ]);
+      .then((rawData) => {
+        const list = Array.isArray(rawData) ? rawData : rawData.indicators || [];
+        const rows = list.map(normalizeRow);
+
+        if (!rows.length) {
+          d3.select("#status-container")
+            .append("div")
+            .attr("class", "error-banner")
+            .text("indicators.json loaded, but no indicator records were found.");
+          return;
+        }
+
+        const select = d3.select("#indicator-select");
+        select
+          .selectAll("option")
+          .data(rows)
+          .join("option")
+          .attr("value", (_, i) => i)
+          .text((d) => d.indicator);
+
+        const updateAll = () => {
+          const idx = Number(select.property("value")) || 0;
+          renderOverview(rows);
+          renderDetail(rows[idx] || rows[0]);
+        };
+
+        select.on("change", updateAll);
+        updateAll();
+
+        const ro = new ResizeObserver(updateAll);
+        ro.observe(document.querySelector(".page"));
+      })
+      .catch((err) => {
+        d3.select("#status-container")
+          .append("div")
+          .attr("class", "error-banner")
+          .text(`Unable to load ./indicators.json (${err.message}). Check that the file is present in the published build folder.`);
       });
   </script>
 </body>
