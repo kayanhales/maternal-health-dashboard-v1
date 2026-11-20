@@ -72,13 +72,19 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
 
     .card-title {
       margin: 0;
       font-size: 18px;
       font-weight: 700;
+    }
+
+    .helper-hint {
+      margin: 0 0 14px;
+      font-size: 12px;
+      color: var(--muted);
     }
 
     .legend {
@@ -167,6 +173,14 @@
       min-height: 240px;
     }
 
+    .overview-row {
+      cursor: pointer;
+    }
+
+    .overview-row:hover .row-highlight {
+      opacity: 1;
+    }
+
     .tooltip {
       position: fixed;
       pointer-events: none;
@@ -212,10 +226,11 @@
           <span class="legend-item"><span class="swatch" style="background: var(--michigan);"></span>Michigan</span>
         </div>
       </div>
+      <p class="helper-hint">Click any indicator row to load it in the Single Indicator Deep Dive below.</p>
       <div id="overview-chart" class="chart-box"></div>
     </section>
 
-    <section class="card">
+    <section id="deep-dive-card" class="card">
       <div class="card-header">
         <h2 class="card-title">Single Indicator Deep Dive</h2>
         <div class="controls">
@@ -254,7 +269,7 @@
       return match ? num(match.pct) : null;
     }
 
-    function normalizeRow(raw) {
+    function normalizeRow(raw, originalIndex) {
       const detroit = extractPct(raw.values, "Detroit") ?? num(raw.detroit_pct);
       const wayne = extractPct(raw.values, "Wayne County") ?? num(raw.wayne_pct);
       const michigan = extractPct(raw.values, "Michigan") ?? num(raw.michigan_pct);
@@ -271,6 +286,7 @@
           : null);
 
       return {
+        _index: originalIndex,
         indicator: String(raw.indicator ?? "Unnamed Indicator"),
         year: raw.year ?? "",
         detroit_pct: detroit,
@@ -296,7 +312,24 @@
       tooltip.style("opacity", 0);
     }
 
-    function renderOverview(rows) {
+    // SVG path with rounded top corners and a flat bottom baseline
+    function topRoundedBarPath(x, y, width, height, radius = 5) {
+      const w = Math.max(0, width);
+      const h = Math.max(0, height);
+      if (w === 0 || h === 0) return "";
+      const r = Math.min(radius, w / 2, h);
+      return [
+        `M ${x},${y + h}`,
+        `L ${x},${y + r}`,
+        `Q ${x},${y} ${x + r},${y}`,
+        `L ${x + w - r},${y}`,
+        `Q ${x + w},${y} ${x + w},${y + r}`,
+        `L ${x + w},${y + h}`,
+        "Z"
+      ].join(" ");
+    }
+
+    function renderOverview(rows, selectedIndex, onSelectIndicator) {
       const container = d3.select("#overview-chart");
       container.selectAll("*").remove();
 
@@ -310,18 +343,24 @@
       }
 
       const width = container.node().clientWidth || 860;
-      const rowHeight = 64;
-      const margin = { top: 12, right: 48, bottom: 28, left: Math.min(240, Math.max(150, width * 0.26)) };
+      const rowHeight = 68;
+      const ratioColWidth = width < 540 ? 52 : 68;
+      const margin = {
+        top: 10,
+        right: ratioColWidth + 12,
+        bottom: 28,
+        left: Math.min(235, Math.max(135, width * 0.25))
+      };
       const height = Math.max(220, ranked.length * rowHeight + margin.top + margin.bottom);
-      const innerW = Math.max(200, width - margin.left - margin.right);
+      const innerW = Math.max(180, width - margin.left - margin.right);
       const innerH = height - margin.top - margin.bottom;
 
       const maxVal = d3.max(ranked, (d) =>
         d3.max([d.detroit_pct, d.wayne_pct, d.michigan_pct].filter((v) => v !== null))
       ) || 10;
 
-      const x = d3.scaleLinear().domain([0, maxVal * 1.15]).range([0, innerW]);
-      const y0 = d3.scaleBand().domain(ranked.map((d) => d.indicator)).range([0, innerH]).padding(0.26);
+      const x = d3.scaleLinear().domain([0, maxVal * 1.18]).range([0, innerW]);
+      const y0 = d3.scaleBand().domain(ranked.map((d) => d.indicator)).range([0, innerH]).padding(0.24);
       const geos = ["Detroit", "Wayne County", "Michigan"];
       const y1 = d3.scaleBand().domain(geos).range([0, y0.bandwidth()]).padding(0.14);
 
@@ -347,11 +386,26 @@
         .style("fill", "#111827");
 
       const rowGroups = g
-        .selectAll(".row-group")
+        .selectAll(".overview-row")
         .data(ranked)
         .join("g")
-        .attr("class", "row-group")
-        .attr("transform", (d) => `translate(0,${y0(d.indicator)})`);
+        .attr("class", "overview-row")
+        .attr("transform", (d) => `translate(0,${y0(d.indicator)})`)
+        .on("click", (_, d) => onSelectIndicator(d._index));
+
+      // Subtle active or hover highlight band behind each indicator group
+      rowGroups
+        .append("rect")
+        .attr("class", "row-highlight")
+        .attr("x", -margin.left + 4)
+        .attr("y", -3)
+        .attr("width", width - 8)
+        .attr("height", y0.bandwidth() + 6)
+        .attr("rx", 8)
+        .attr("fill", (d) => (d._index === selectedIndex ? "#faf4f9" : "#f3f4f6"))
+        .attr("stroke", (d) => (d._index === selectedIndex ? "#e2c6dd" : "none"))
+        .style("opacity", (d) => (d._index === selectedIndex ? 1 : 0))
+        .style("transition", "opacity 120ms ease");
 
       geos.forEach((geo) => {
         const key =
@@ -361,8 +415,9 @@
               ? "wayne_pct"
               : "michigan_pct";
 
-        rowGroups
-          .filter((d) => d[key] !== null)
+        const validRows = rowGroups.filter((d) => d[key] !== null);
+
+        validRows
           .append("rect")
           .attr("x", 0)
           .attr("y", y1(geo))
@@ -376,11 +431,34 @@
               : "";
             showTooltip(
               event,
-              `<strong>${d.indicator}</strong><br/>${geo}: <b>${d[key].toFixed(1)}%</b>${ratioText}`
+              `<strong>${d.indicator}</strong><br/>${geo}: <b>${d[key].toFixed(1)}%</b>${ratioText}<br/><span style="color:#d1d5db">Click to inspect in Deep Dive</span>`
             );
           })
           .on("mouseleave", hideTooltip);
+
+        validRows
+          .append("text")
+          .attr("x", (d) => x(d[key]) + 6)
+          .attr("y", (d) => y1(geo) + y1.bandwidth() / 2)
+          .attr("dominant-baseline", "central")
+          .style("font-size", "10.5px")
+          .style("font-weight", geo === "Detroit" ? "700" : "500")
+          .style("fill", geo === "Detroit" ? "#6b2d5c" : "#4b5563")
+          .text((d) => `${d[key].toFixed(1)}%`);
       });
+
+      // Right-side Detroit : Michigan ratio badge
+      rowGroups
+        .filter((d) => d.detroit_to_michigan_ratio !== null)
+        .append("text")
+        .attr("x", innerW + ratioColWidth)
+        .attr("y", y0.bandwidth() / 2)
+        .attr("text-anchor", "end")
+        .attr("dominant-baseline", "central")
+        .style("font-size", "12px")
+        .style("font-weight", "700")
+        .style("fill", "#6b2d5c")
+        .text((d) => `${d.detroit_to_michigan_ratio.toFixed(2)}x`);
     }
 
     function renderDetail(row) {
@@ -460,14 +538,19 @@
         .call(d3.axisLeft(y).ticks(5).tickFormat((d) => `${d}%`))
         .call((axis) => axis.select(".domain").remove());
 
-      g.selectAll("rect")
+      g.selectAll("path.detail-bar")
         .data(series)
-        .join("rect")
-        .attr("x", (d) => x(d.geo))
-        .attr("y", (d) => y(d.val))
-        .attr("width", x.bandwidth())
-        .attr("height", (d) => Math.max(0, innerH - y(d.val)))
-        .attr("rx", 5)
+        .join("path")
+        .attr("class", "detail-bar")
+        .attr("d", (d) =>
+          topRoundedBarPath(
+            x(d.geo),
+            y(d.val),
+            x.bandwidth(),
+            Math.max(0, innerH - y(d.val)),
+            5
+          )
+        )
         .attr("fill", (d) => GEO_COLORS[d.geo] || "#6b2d5c")
         .on("mousemove", (event, d) => {
           showTooltip(event, `<strong>${d.geo}</strong>: ${d.val.toFixed(1)}%`);
@@ -490,7 +573,7 @@
     d3.json("./indicators.json")
       .then((rawData) => {
         const list = Array.isArray(rawData) ? rawData : rawData.indicators || [];
-        const rows = list.map(normalizeRow);
+        const rows = list.map((raw, i) => normalizeRow(raw, i));
 
         if (!rows.length) {
           d3.select("#status-container")
@@ -505,16 +588,26 @@
           .selectAll("option")
           .data(rows)
           .join("option")
-          .attr("value", (_, i) => i)
+          .attr("value", (d) => d._index)
           .text((d) => d.indicator);
 
-        const updateAll = () => {
+        const updateAll = ({ scrollToDetail = false } = {}) => {
           const idx = Number(select.property("value")) || 0;
-          renderOverview(rows);
+          renderOverview(rows, idx, (clickedIndex) => {
+            select.property("value", clickedIndex);
+            updateAll({ scrollToDetail: true });
+          });
           renderDetail(rows[idx] || rows[0]);
+
+          if (scrollToDetail) {
+            document.getElementById("deep-dive-card")?.scrollIntoView({
+              behavior: "smooth",
+              block: "nearest"
+            });
+          }
         };
 
-        select.on("change", updateAll);
+        select.on("change", () => updateAll({ scrollToDetail: false }));
         updateAll();
 
         let lastWidth = document.querySelector("#overview-chart").clientWidth;
@@ -522,7 +615,7 @@
           const nextWidth = entries[0]?.contentRect?.width ?? 0;
           if (Math.abs(nextWidth - lastWidth) > 2) {
             lastWidth = nextWidth;
-            updateAll();
+            updateAll({ scrollToDetail: false });
           }
         });
         ro.observe(document.querySelector("#overview-chart"));
