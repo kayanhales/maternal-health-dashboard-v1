@@ -1,0 +1,94 @@
+[
+  {
+    "indicator": "Did not plan to breastfeed",
+    "year": "2022",
+    "source_doc": "City of Detroit Maternal & Infant Health Data Brief",
+    "notes": "Prenatal feeding plan; reflects support, access, and structural conditions",
+    "detroit_vs_michigan_pp": 14.1,
+    "detroit_vs_wayne_pp": 8.1,
+    "detroit_to_michigan_ratio": 2.19,
+    "values": [
+      {
+        "geography": "Detroit",
+        "pct": 25.9
+      },
+      {
+        "geography": "Wayne County",
+        "pct": 17.8
+      },
+      {
+        "geography": "Michigan",
+        "pct": 11.8
+      }
+    ]
+  },
+  {
+    "indicator": "Less than 12 years education",
+    "year": "2022",
+    "source_doc": "City of Detroit Maternal & Infant Health Data Brief",
+    "notes": "Educational attainment context among pregnant persons",
+    "detroit_vs_michigan_pp": 11.0,
+    "detroit_vs_wayne_pp": 6.6,
+    "detroit_to_michigan_ratio": 2.15,
+    "values": [
+      {
+        "geography": "Detroit",
+        "pct": 20.6
+      },
+      {
+        "geography": "Wayne County",
+        "pct": 14.0
+      },
+      {
+        "geography": "Michigan",
+        "pct": 9.6
+      }
+    ]
+  },
+  {
+    "indicator": "Births under age 20",
+    "year": "2019-2023",
+    "source_doc": "City of Detroit Maternal & Infant Health Data Brief",
+    "notes": "Live births to birthing people under age 20",
+    "detroit_vs_michigan_pp": 4.0,
+    "detroit_vs_wayne_pp": 3.1,
+    "detroit_to_michigan_ratio": 2.03,
+    "values": [
+      {
+        "geography": "Detroit",
+        "pct": 7.9
+      },
+      {
+        "geography": "Wayne County",
+        "pct": 4.8
+      },
+      {
+        "geography": "Michigan",
+        "pct": 3.9
+      }
+    ]
+  },
+  {
+    "indicator": "WIC during pregnancy",
+    "year": "2022",
+    "source_doc": "City of Detroit Maternal & Infant Health Data Brief",
+    "notes": "Share of pregnant persons receiving WIC nutrition assistance",
+    "detroit_vs_michigan_pp": 27.0,
+    "detroit_vs_wayne_pp": 15.7,
+    "detroit_to_michigan_ratio": 1.89,
+    "values": [
+      {
+        "geography": "Detroit",
+        "pct": 57.4
+      },
+      {
+        "geography": "Wayne County",
+        "pct": 41.7
+      },
+      {
+        "geography": "Michigan",
+        "pct": 30.4
+      }
+    ]
+  }
+]

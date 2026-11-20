@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mothering Justice — D3 Comparison</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <style>
+    body {
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      background: #f8f9fb;
+      color: #111827;
+      margin: 0;
+      padding: 32px 20px;
+    }
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #6b2d5c;
+      margin-bottom: 6px;
+    }
+    h1 {
+      font-size: 26px;
+      margin: 0 0 6px 0;
+    }
+    .subtitle {
+      color: #4b5563;
+      font-size: 14px;
+      margin: 0 0 24px 0;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 0 0 12px 0;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+      background: #fff;
+      min-width: 280px;
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .kpi {
+      border: 1px solid #eef0f3;
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: #fafafa;
+    }
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #6b7280;
+    }
+    .kpi-val {
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+      color: #6b2d5c;
+    }
+    .kpi-sub {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+    .tooltip {
+      position: fixed;
+      pointer-events: none;
+      background: #111827;
+      color: #ffffff;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.4;
+      opacity: 0;
+      transition: opacity 0.12s ease;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="eyebrow">MOTHERING JUSTICE · D3 PROTOTYPE</div>
+    <h1>Detroit Maternal &amp; Structural Health Indicators</h1>
+    <p class="subtitle">Rendered directly in the browser with D3.js from pre-computed disparity metrics.</p>
+
+    <div class="card">
+      <div class="card-title">All Indicators Overview (Ranked by Detroit : Michigan Ratio)</div>
+      <div id="overview-chart"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Single Indicator Deep Dive</div>
+      <div class="controls">
+        <label for="indicator-select"><strong>Choose an indicator:</strong></label>
+        <select id="indicator-select"></select>
+      </div>
+      <div class="kpis" id="kpi-cards"></div>
+      <div id="detail-chart"></div>
+    </div>
+  </div>
+
+  <div class="tooltip" id="tooltip"></div>
+
+  <script>
+    const GEO_COLORS = {
+      "Detroit": "#6b2d5c",
+      "Wayne County": "#9aa5b1",
+      "Michigan": "#cbd2d9"
+    };
+    const GEO_ORDER = ["Detroit", "Wayne County", "Michigan"];
+    const tooltip = d3.select("#tooltip");
+
+    function showTooltip(event, html) {
+      tooltip
+        .html(html)
+        .style("left", `${event.clientX + 12}px`)
+        .style("top", `${event.clientY + 12}px`)
+        .style("opacity", 1);
+    }
+
+    function hideTooltip() {
+      tooltip.style("opacity", 0);
+    }
+
+    function renderOverview(data) {
+      const container = d3.select("#overview-chart");
+      container.selectAll("*").remove();
+
+      const margin = { top: 24, right: 56, bottom: 32, left: 220 };
+      const width = Math.max(540, container.node().clientWidth) - margin.left - margin.right;
+      const height = Math.max(280, data.length * 64);
+
+      const svg = container
+        .append("svg")
+        .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+        .style("width", "100%")
+        .style("height", "auto");
+
+      const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const y0 = d3.scaleBand()
+        .domain(data.map(d => d.indicator))
+        .range([0, height])
+        .paddingInner(0.25);
+
+      const y1 = d3.scaleBand()
+        .domain(GEO_ORDER)
+        .range([0, y0.bandwidth()])
+        .padding(0.12);
+
+      const maxPct = d3.max(data, d => d3.max(d.values, v => v.pct)) || 10;
+      const x = d3.scaleLinear()
+        .domain([0, maxPct * 1.18])
+        .range([0, width]);
+
+      g.append("g")
+        .call(d3.axisLeft(y0).tickSize(0))
+        .selectAll("text")
+        .style("font-size", "12px")
+        .style("fill", "#1f2937");
+
+      g.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x).ticks(5).tickFormat(d => `${d}%`));
+
+      const groups = g.selectAll(".ind-group")
+        .data(data)
+        .join("g")
+        .attr("class", "ind-group")
+        .attr("transform", d => `translate(0,${y0(d.indicator)})`);
+
+      groups.selectAll("rect")
+        .data(d => d.values.map(v => ({ ...v, indicator: d.indicator, year: d.year, ratio: d.detroit_to_michigan_ratio })))
+        .join("rect")
+        .attr("x", 0)
+        .attr("y", d => y1(d.geography))
+        .attr("height", y1.bandwidth())
+        .attr("width", d => x(d.pct))
+        .attr("rx", 3)
+        .attr("fill", d => GEO_COLORS[d.geography])
+        .on("mousemove", (event, d) => {
+          showTooltip(
+            event,
+            `<strong>${d.indicator}</strong> (${d.year})<br/>${d.geography}: <strong>${d.pct.toFixed(1)}%</strong><br/>Detroit : MI ratio: ${d.ratio.toFixed(2)}x`
+          );
+        })
+        .on("mouseleave", hideTooltip);
+
+      groups.selectAll(".bar-label")
+        .data(d => d.values)
+        .join("text")
+        .attr("class", "bar-label")
+        .attr("x", d => x(d.pct) + 6)
+        .attr("y", d => y1(d.geography) + y1.bandwidth() / 2 + 4)
+        .style("font-size", "11px")
+        .style("fill", "#374151")
+        .text(d => `${d.pct.toFixed(1)}%`);
+    }
+
+    function renderDetail(item) {
+      const detroit = item.values.find(v => v.geography === "Detroit")?.pct;
+      const gap = item.detroit_vs_michigan_pp;
+      const ratio = item.detroit_to_michigan_ratio;
+
+      d3.select("#kpi-cards").html(`
+        <div class="kpi">
+          <div class="kpi-label">DETROIT SHARE</div>
+          <div class="kpi-val">${detroit != null ? detroit.toFixed(1) + "%" : "—"}</div>
+          <div class="kpi-sub">Reporting period: ${item.year}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">VS. MICHIGAN BASELINE</div>
+          <div class="kpi-val" style="color:#111827">${gap != null ? (gap >= 0 ? "+" : "") + gap.toFixed(1) + " pp" : "—"}</div>
+          <div class="kpi-sub">${ratio != null ? ratio.toFixed(2) + "x Detroit : Michigan ratio" : "Percentage-point gap"}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">CONTEXT &amp; SOURCE</div>
+          <div class="kpi-sub" style="color:#1f2937;font-size:13px;margin-top:6px">${item.notes || "—"}</div>
+          <div class="kpi-sub">${item.source_doc || "—"}</div>
+        </div>
+      `);
+
+      const container = d3.select("#detail-chart");
+      container.selectAll("*").remove();
+
+      const margin = { top: 20, right: 24, bottom: 32, left: 48 };
+      const width = Math.max(400, container.node().clientWidth) - margin.left - margin.right;
+      const height = 270;
+
+      const svg = container
+        .append("svg")
+        .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+        .style("width", "100%")
+        .style("height", "auto");
+
+      const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const x = d3.scaleBand()
+        .domain(GEO_ORDER)
+        .range([0, width])
+        .padding(0.32);
+
+      const maxPct = d3.max(item.values, d => d.pct) || 10;
+      const y = d3.scaleLinear()
+        .domain([0, maxPct * 1.22])
+        .range([height, 0]);
+
+      g.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x).tickSize(0));
+
+      g.append("g")
+        .call(d3.axisLeft(y).ticks(5).tickFormat(d => `${d}%`));
+
+      const bars = g.selectAll("rect")
+        .data(item.values)
+        .join("rect")
+        .attr("x", d => x(d.geography))
+        .attr("width", x.bandwidth())
+        .attr("y", height)
+        .attr("height", 0)
+        .attr("rx", 4)
+        .attr("fill", d => GEO_COLORS[d.geography])
+        .on("mousemove", (event, d) => {
+          showTooltip(event, `<strong>${d.geography}</strong>: <strong>${d.pct.toFixed(1)}%</strong>`);
+        })
+        .on("mouseleave", hideTooltip);
+
+      bars.transition()
+        .duration(350)
+        .attr("y", d => y(d.pct))
+        .attr("height", d => height - y(d.pct));
+
+      g.selectAll(".val-label")
+        .data(item.values)
+        .join("text")
+        .attr("class", "val-label")
+        .attr("x", d => x(d.geography) + x.bandwidth() / 2)
+        .attr("y", d => y(d.pct) - 8)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style("font-weight", "600")
+        .style("fill", "#111827")
+        .text(d => `${d.pct.toFixed(1)}%`);
+    }
+
+    function initDashboard(data) {
+      renderOverview(data);
+
+      const select = d3.select("#indicator-select");
+      select.selectAll("option")
+        .data(data)
+        .join("option")
+        .attr("value", d => d.indicator)
+        .text(d => d.indicator);
+
+      renderDetail(data[0]);
+
+      select.on("change", function () {
+        const chosen = data.find(d => d.indicator === this.value);
+        if (chosen) renderDetail(chosen);
+      });
+    }
+
+    d3.json("./indicators.json")
+      .then(data => initDashboard(data))
+      .catch(() => {
+        // Fallback sample if opened directly without serving ./indicators.json
+        initDashboard([
+          {
+            indicator: "Sample Indicator",
+            year: "2023",
+            source_doc: "Local preview",
+            notes: "Run scripts/export_json.py and serve dist/ to load real Parquet data.",
+            detroit_vs_michigan_pp: 6.4,
+            detroit_vs_wayne_pp: 3.1,
+            detroit_to_michigan_ratio: 1.85,
+            values: [
+              { geography: "Detroit", pct: 14.0 },
+              { geography: "Wayne County", pct: 10.9 },
+              { geography: "Michigan", pct: 7.6 }
+            ]
+          }
+        ]);
+      });
+  </script>
+</body>
+</html>

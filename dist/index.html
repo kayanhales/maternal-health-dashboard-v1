@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mothering Justice — Maternal Health Equity Static Views</title>
+  <style>
+    body {
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f8f9fb;
+      color: #111827;
+      margin: 0;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+    .eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #6b2d5c;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 28px;
+      margin: 0 0 8px 0;
+    }
+    .lead {
+      font-size: 15px;
+      color: #4b5563;
+      margin: 0 0 28px 0;
+      line-height: 1.5;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      color: #6b2d5c;
+      background: #faf4f9;
+      padding: 4px 8px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+    .card h2 {
+      font-size: 17px;
+      margin: 0 0 8px 0;
+    }
+    .card p {
+      font-size: 13px;
+      color: #4b5563;
+      margin: 0 0 16px 0;
+      line-height: 1.45;
+    }
+    .btn {
+      display: inline-block;
+      text-decoration: none;
+      background: #6b2d5c;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 9px 14px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .btn.secondary {
+      background: #ffffff;
+      color: #111827;
+      border: 1px solid #d1d5db;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="eyebrow">MOTHERING JUSTICE · MATERNAL HEALTH EQUITY</div>
+    <h1>Detroit Maternal &amp; Structural Health Indicators</h1>
+    <p class="lead">
+      Static interactive views generated from pre-computed disparity metrics—no live Python server or worker memory limits required.
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <div>
+          <span class="badge">D3.JS INTERACTIVE VIEW</span>
+          <h2>Custom D3 Dashboard</h2>
+          <p>Smooth transitions, KPI summary cards, hover tooltips, and indicator selector driven by <code>indicators.json</code>.</p>
+        </div>
+        <a class="btn" href="./d3_view.html">Open D3 View</a>
+      </div>
+
+      <div class="card">
+        <div>
+          <span class="badge">PLOTLY STATIC HTML</span>
+          <h2>All Indicators Overview</h2>
+          <p>Horizontal grouped comparison across Detroit, Wayne County, and Michigan ranked by Detroit-to-Michigan ratio.</p>
+        </div>
+        <a class="btn secondary" href="./overview.html">Open Overview Chart</a>
+      </div>
+
+      <div class="card">
+        <div>
+          <span class="badge">PLOTLY STATIC HTML</span>
+          <h2>Single Indicator Deep Dive</h2>
+          <p>Standalone interactive chart with a built-in indicator dropdown and gap/ratio title readouts.</p>
+        </div>
+        <a class="btn secondary" href="./deep_dive.html">Open Deep Dive Chart</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
