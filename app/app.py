@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from dash import Dash, Input, Output, dcc, html
-import plotly.express as px
+import plotly.graph_objects as go
 import polars as pl
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -85,44 +85,47 @@ df_detroit_only = df_with_metrics.filter(
 
 
 def build_overview_figure():
-  data_dict = df_long.select(
-      "indicator",
-      "geography",
-      "pct",
-      "year",
-      "detroit_vs_michigan_pp",
-      "detroit_to_michigan_ratio",
-  ).to_dict(as_series=False)
+  fig = go.Figure()
 
-  fig = px.bar(
-      data_dict,
-      x="pct",
-      y="indicator",
-      color="geography",
-      barmode="group",
-      orientation="h",
-      text="pct",
-      template="plotly_white",
-      color_discrete_map=GEO_COLORS,
-      category_orders={"indicator": indicator_order, "geography": GEO_ORDER},
-      labels={"pct": "Share (%)", "indicator": "", "geography": "Geography"},
-      custom_data=["year", "detroit_vs_michigan_pp", "detroit_to_michigan_ratio"],
-  )
-  fig.update_traces(
-      texttemplate="%{text:.1f}%",
-      textposition="outside",
-      cliponaxis=False,
-      marker_line_width=0,
-      hovertemplate=(
-          "<b>%{y}</b> (%{customdata[0]})<br>"
-          "%{fullData.name}: <b>%{x:.1f}%</b><br>"
-          "Detroit vs. MI gap: %{customdata[1]:+.1f} pp<br>"
-          "Detroit : MI ratio: %{customdata[2]:.2f}x<extra></extra>"
-      ),
-  )
-  pct_vals = [v for v in data_dict["pct"] if v is not None]
-  max_pct = max(pct_vals) if pct_vals else 10.0
+  for geo in GEO_ORDER:
+    sub = df_long.filter(pl.col("geography") == geo)
+    pct_list = sub["pct"].to_list()
+    ind_list = sub["indicator"].to_list()
+    custom = list(
+        zip(
+            sub["year"].to_list(),
+            sub["detroit_vs_michigan_pp"].to_list(),
+            sub["detroit_to_michigan_ratio"].to_list(),
+        )
+    )
+
+    fig.add_trace(
+        go.Bar(
+            name=geo,
+            x=pct_list,
+            y=ind_list,
+            orientation="h",
+            marker_color=GEO_COLORS[geo],
+            text=[f"{v:.1f}%" if v is not None else "" for v in pct_list],
+            textposition="outside",
+            cliponaxis=False,
+            marker_line_width=0,
+            customdata=custom,
+            hovertemplate=(
+                "<b>%{y}</b> (%{customdata[0]})<br>"
+                "%{fullData.name}: <b>%{x:.1f}%</b><br>"
+                "Detroit vs. MI gap: %{customdata[1]:+.1f} pp<br>"
+                "Detroit : MI ratio: %{customdata[2]:.2f}x<extra></extra>"
+            ),
+        )
+    )
+
+  all_pcts = [v for v in df_long["pct"].to_list() if v is not None]
+  max_pct = max(all_pcts) if all_pcts else 10.0
+
   fig.update_layout(
+      barmode="group",
+      template="plotly_white",
       title="Multi-Area Indicators Ranked by Detroit-to-Michigan Ratio",
       xaxis={
           "range": [0, max(max_pct * 1.18, 15)],
@@ -130,8 +133,18 @@ def build_overview_figure():
           "gridcolor": "#f1f5f9",
           "zerolinecolor": "#e5e7eb",
       },
-      yaxis={"showgrid": False},
-      legend={"orientation": "h", "y": 1.08, "x": 1.0, "xanchor": "right", "title_text": ""},
+      yaxis={
+          "showgrid": False,
+          "categoryorder": "array",
+          "categoryarray": list(reversed(indicator_order)),
+      },
+      legend={
+          "orientation": "h",
+          "y": 1.08,
+          "x": 1.0,
+          "xanchor": "right",
+          "title_text": "",
+      },
       margin={"t": 72, "b": 32, "l": 18, "r": 48},
       height=max(320, 95 * len(indicator_order)),
       paper_bgcolor="#ffffff",
@@ -423,39 +436,45 @@ def update_detail_view(selected_indicator: str | None):
   if sub.height == 0:
     return {}, []
 
-  data_dict = sub.select("geography", "pct").to_dict(as_series=False)
   year_label = sub["year"][0]
+  geos = []
+  pcts = []
+  colors = []
+  for geo in GEO_ORDER:
+    row = sub.filter(pl.col("geography") == geo)
+    if row.height > 0:
+      geos.append(geo)
+      pcts.append(row["pct"][0])
+      colors.append(GEO_COLORS[geo])
 
-  fig = px.bar(
-      data_dict,
-      x="geography",
-      y="pct",
-      color="geography",
-      text="pct",
-      template="plotly_white",
-      color_discrete_map=GEO_COLORS,
-      category_orders={"geography": GEO_ORDER},
-      labels={"pct": "Share (%)", "geography": ""},
-  )
-  fig.update_traces(
-      texttemplate="%{text:.1f}%",
-      textposition="outside",
-      cliponaxis=False,
-      marker_line_width=0,
-      width=0.52,
-  )
-  pct_vals = [v for v in data_dict["pct"] if v is not None]
+  pct_vals = [v for v in pcts if v is not None]
   max_val = max(pct_vals) if pct_vals else 10.0
+
+  fig = go.Figure(
+      data=[
+          go.Bar(
+              x=geos,
+              y=pcts,
+              marker_color=colors,
+              text=[f"{v:.1f}%" if v is not None else "" for v in pcts],
+              textposition="outside",
+              cliponaxis=False,
+              marker_line_width=0,
+              width=0.52,
+          )
+      ]
+  )
   fig.update_layout(
+      template="plotly_white",
       title=f"{selected_indicator} ({year_label})",
       showlegend=False,
+      xaxis={"showgrid": False, "categoryorder": "array", "categoryarray": GEO_ORDER},
       yaxis={
           "range": [0, max(max_val * 1.22, 10)],
           "ticksuffix": "%",
           "gridcolor": "#f1f5f9",
           "zerolinecolor": "#e5e7eb",
       },
-      xaxis={"showgrid": False},
       margin={"t": 56, "b": 28, "l": 48, "r": 24},
       height=360,
       paper_bgcolor="#ffffff",
@@ -464,7 +483,11 @@ def update_detail_view(selected_indicator: str | None):
   )
 
   detroit_rows = sub.filter(pl.col("geography") == "Detroit")["pct"]
-  detroit_val = float(detroit_rows[0]) if len(detroit_rows) and detroit_rows[0] is not None else None
+  detroit_val = (
+      float(detroit_rows[0])
+      if len(detroit_rows) and detroit_rows[0] is not None
+      else None
+  )
   gap = sub["detroit_vs_michigan_pp"][0]
   ratio = sub["detroit_to_michigan_ratio"][0]
   source_doc = sub["source_doc"][0]
